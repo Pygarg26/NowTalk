@@ -52,6 +52,13 @@ app.get('/', (req, res) => {
   res.send('NowTalk Socket.IO server is running.');
 });
 
+// Check if a user is online
+app.get('/is-online/:username', (req, res) => {
+  const { username } = req.params;
+  const isOnline = !!onlineUsers[username];
+  res.json({ username, online: isOnline });
+});
+
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
