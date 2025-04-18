@@ -1,4 +1,3 @@
-const WebSocket = require('ws');
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -8,52 +7,71 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`WebSocket server running on port ${PORT}`);
-});
-const users = {}; // username -> ws
+
+// In-memory user registry
+const users = {}; // username -> WebSocket
 
 wss.on('connection', (ws) => {
   let username = null;
 
   ws.on('message', (message) => {
-    const data = JSON.parse(message);
+    try {
+      const data = JSON.parse(message);
 
-    if (data.type === 'login') {
-      username = data.username;
-      users[username] = ws;
-      console.log(`${username} connected`);
-      broadcastPresence(username, true);
-    }
+      if (data.type === 'login') {
+        username = data.username;
+        users[username] = ws;
+        console.log(`${username} connected`);
 
-    if (data.type === 'message') {
-      const to = data.to;
-      const recipient = users[to];
-      if (recipient) {
-        recipient.send(JSON.stringify({
-          type: 'message',
-          from: username,
-          text: data.text
-        }));
+        // Notify all users that this user is online
+        broadcastPresence(username, true);
       }
+
+      if (data.type === 'message') {
+        const to = data.to;
+        const recipient = users[to];
+        if (recipient) {
+          recipient.send(JSON.stringify({
+            type: 'message',
+            from: username,
+            text: data.text
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Error parsing message:', err);
     }
   });
 
   ws.on('close', () => {
-    delete users[username];
-    broadcastPresence(username, false);
-    console.log(`${username} disconnected`);
+    if (username) {
+      delete users[username];
+      broadcastPresence(username, false);
+      console.log(`${username} disconnected`);
+    }
   });
 });
 
+// Broadcast user's online/offline presence
 function broadcastPresence(user, isOnline) {
-  Object.values(users).forEach(ws => {
-    ws.send(JSON.stringify({
-      type: 'presence',
-      username: user,
-      online: isOnline
-    }));
+  const payload = JSON.stringify({
+    type: 'presence',
+    username: user,
+    online: isOnline
+  });
+
+  Object.values(users).forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payload);
+    }
   });
 }
 
-console.log("WebSocket server running on ws://localhost:3000");
+// Just to make Render happy—basic route
+app.get('/', (req, res) => {
+  res.send('NowTalk WebSocket server is running.');
+});
+
+server.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
+});
