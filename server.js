@@ -14,7 +14,7 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 
 const onlineUsers = {}; // username => socket.id
-let isOnline = {};
+let isOnline = [];
 
 io.on('connection', (socket) => {
   //console.log('A user connected:', socket.id);
@@ -23,7 +23,7 @@ io.on('connection', (socket) => {
     // Save username to socket itself
     socket.username = username;
     onlineUsers[username] = socket.id;
-    isOnline += { username, online: true }
+    isOnline.push(username)
 
     io.emit('presence', { isOnline });
     console.log(isOnline)
