@@ -23,7 +23,7 @@ io.on('connection', (socket) => {
     // Save username to socket itself
     socket.username = username;
     onlineUsers[username] = socket.id;
-    isOnline += { username, true }
+    isOnline += { username, online: true }
 
     io.emit('presence', { isOnline });
     console.log(`${username} is now online`);
