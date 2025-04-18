@@ -1,75 +1,55 @@
 const express = require('express');
 const http = require('http');
-const WebSocket = require('ws');
+const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const io = new Server(server, {
+  cors: {
+    origin: '*', // You can set this to your frontend origin for more security
+    methods: ['GET', 'POST']
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 
-// In-memory user registry
-const users = {}; // username -> WebSocket
+const onlineUsers = {}; // username => socket.id
 
-wss.on('connection', (ws) => {
+io.on('connection', (socket) => {
+  console.log('A user connected:', socket.id);
+
   let username = null;
 
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message);
+  socket.on('login', (user) => {
+    username = user;
+    onlineUsers[username] = socket.id;
 
-      if (data.type === 'login') {
-        username = data.username;
-        users[username] = ws;
-        console.log(`${username} connected`);
+    // Notify everyone that this user is online
+    io.emit('presence', { username, online: true });
+    console.log(`${username} is now online`);
+  });
 
-        // Notify all users that this user is online
-        broadcastPresence(username, true);
-      }
-
-      if (data.type === 'message') {
-        const to = data.to;
-        const recipient = users[to];
-        if (recipient) {
-          recipient.send(JSON.stringify({
-            type: 'message',
-            from: username,
-            text: data.text
-          }));
-        }
-      }
-    } catch (err) {
-      console.error('Error parsing message:', err);
+  socket.on('message', ({ to, text }) => {
+    const recipientSocketId = onlineUsers[to];
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('message', {
+        from: username,
+        text
+      });
     }
   });
 
-  ws.on('close', () => {
-    if (username) {
-      delete users[username];
-      broadcastPresence(username, false);
+  socket.on('disconnect', () => {
+    if (username && onlineUsers[username]) {
+      delete onlineUsers[username];
+      io.emit('presence', { username, online: false });
       console.log(`${username} disconnected`);
     }
   });
 });
 
-// Broadcast user's online/offline presence
-function broadcastPresence(user, isOnline) {
-  const payload = JSON.stringify({
-    type: 'presence',
-    username: user,
-    online: isOnline
-  });
-
-  Object.values(users).forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(payload);
-    }
-  });
-}
-
-// Just to make Render happy—basic route
 app.get('/', (req, res) => {
-  res.send('NowTalk WebSocket server is running.');
+  res.send('NowTalk Socket.IO server is running.');
 });
 
 server.listen(PORT, () => {
