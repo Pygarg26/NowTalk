@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
     origin: '*',
@@ -45,7 +46,13 @@ io.on('connection', (socket) => {
     const username = socket.username;
     if (username && onlineUsers[username] === socket.id) {
       delete onlineUsers[username];
-      io.emit('presence', { username, online: false });
+      
+      const index = isOnline.indexOf(username);
+      if (index > -1) { // only splice array when item is found
+          isOnline.splice(index, 1); // 2nd parameter means remove one item only
+      }
+      
+      io.emit('presence', { isOnline });
       console.log(`${username} disconnected`);
     }
   });
