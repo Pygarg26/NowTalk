@@ -26,6 +26,7 @@ io.on('connection', (socket) => {
     isOnline += { username, online: true }
 
     io.emit('presence', { isOnline });
+    console.log(isOnline)
     console.log(`${username} is now online`);
   });
 
