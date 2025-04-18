@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 3000;
 const onlineUsers = {}; // username => socket.id
 
 io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
+  //console.log('A user connected:', socket.id);
 
   let username = null;
 
