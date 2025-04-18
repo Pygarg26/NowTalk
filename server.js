@@ -14,16 +14,18 @@ const io = new Server(server, {
 const PORT = process.env.PORT || 3000;
 
 const onlineUsers = {}; // username => socket.id
+let isOnline = {};
 
 io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
+  //console.log('A user connected:', socket.id);
 
   socket.on('login', (username) => {
     // Save username to socket itself
     socket.username = username;
     onlineUsers[username] = socket.id;
+    isOnline += { username, true }
 
-    io.emit('presence', { username, online: true });
+    io.emit('presence', { isOnline });
     console.log(`${username} is now online`);
   });
 
